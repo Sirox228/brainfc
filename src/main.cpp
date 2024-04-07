@@ -47,11 +47,13 @@ int main(int argc, char* argv[]) {
   while (getline(in, line)) {
     for (int i = 0; i < line.length(); i++) {
       token tk = getToken(line, i);
-      codegenToken(tk, bt, &context, &irBuilder, cells, cp, gtc, ptc);
+      codegenToken(tk, bt, &context, &irBuilder, cells, cp, gtc, ptc, mainFunc);
     }
   }
 
   endWriteMain(&context, &irBuilder, &mainFunc);
+
+  //irModule.print(llvm::outs(), nullptr);
 
   generateObjCode(&irModule);
 

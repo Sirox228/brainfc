@@ -9,6 +9,9 @@
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/Support/Alignment.h>
 #include "lexer.h"
+#include <vector>
+
+std::vector<llvm::BasicBlock*> btc;
 
 llvm::Value* loadArrayPtr(llvm::LLVMContext* context, llvm::ArrayType* bt, llvm::IRBuilder<>* builder, llvm::AllocaInst* cp, llvm::GlobalVariable* cells) {
   llvm::LoadInst* load = builder->CreateLoad(llvm::Type::getInt64Ty(*context), cp);
@@ -17,7 +20,7 @@ llvm::Value* loadArrayPtr(llvm::LLVMContext* context, llvm::ArrayType* bt, llvm:
   return builder->CreateInBoundsGEP(bt, cells, {llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), 0), load});
 }
 
-void codegenToken(token tk, llvm::ArrayType* bt, llvm::LLVMContext* context, llvm::IRBuilder<>* builder, llvm::GlobalVariable* cells, llvm::AllocaInst* cp, llvm::Function* gtc, llvm::Function* ptc) {
+void codegenToken(token tk, llvm::ArrayType* bt, llvm::LLVMContext* context, llvm::IRBuilder<>* builder, llvm::GlobalVariable* cells, llvm::AllocaInst* cp, llvm::Function* gtc, llvm::Function* ptc, llvm::Function* func) {
   switch (tk) {
     case tk_plus:
       {
@@ -65,6 +68,26 @@ void codegenToken(token tk, llvm::ArrayType* bt, llvm::LLVMContext* context, llv
         llvm::CallInst* call = builder->CreateCall(gtc, {});
         llvm::Value* cellptr = loadArrayPtr(context, bt, builder, cp, cells);
         builder->CreateStore(call, cellptr);
+        break;
+      }
+    case tk_lbracket:
+      {
+        llvm::BasicBlock* bb = llvm::BasicBlock::Create(*context, "", func);
+        builder->CreateBr(bb);
+        builder->SetInsertPoint(bb);
+        btc.push_back(bb);
+        break;
+      }
+    case tk_rbracket:
+      {
+        llvm::BasicBlock* bb = btc[btc.size()-1];
+        llvm::Value* cellptr = loadArrayPtr(context, bt, builder, cp, cells);
+        llvm::LoadInst* cell = builder->CreateLoad(llvm::Type::getInt8Ty(*context), cellptr);
+        llvm::Value* cmp = builder->CreateICmp(llvm::CmpInst::ICMP_EQ, cell, llvm::ConstantInt::get(llvm::Type::getInt8Ty(*context), 0));
+        llvm::BasicBlock* nbb = llvm::BasicBlock::Create(*context, "", func);
+        builder->CreateCondBr(cmp, nbb, bb);
+        builder->SetInsertPoint(nbb);
+        btc.pop_back();
         break;
       }
     default: break;
