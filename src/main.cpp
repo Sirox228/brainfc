@@ -13,6 +13,7 @@
 #include "lexer.h"
 #include "codegen.h"
 #include "objcodegen.h"
+#include <sstream>
 
 // TODO: refactor this
 
@@ -43,12 +44,13 @@ int main(int argc, char* argv[]) {
   cp0->setAlignment(llvm::Align(8));
 
   std::ifstream in(argv[argc-2]);
-  std::string line;
-  while (getline(in, line)) {
-    for (int i = 0; i < line.length(); i++) {
-      token tk = getToken(line, i);
-      codegenToken(tk, bt, &context, &irBuilder, cells, cp, gtc, ptc, mainFunc);
-    }
+  std::string code;
+  std::stringstream buf;
+  buf << in.rdbuf();
+  code = buf.str();
+  for (int i = 0; i < code.length(); i++) {
+    token tk = getToken(code, i);
+    codegenToken(tk, bt, &context, &irBuilder, cells, cp, gtc, ptc, mainFunc);
   }
 
   endWriteMain(&context, &irBuilder, &mainFunc);
